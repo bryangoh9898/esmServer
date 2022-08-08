@@ -17,7 +17,43 @@ const upload = multer({ dest: 'tmp/csv/' });
 //We see that mongodb is case-sensitive
 
 router.get('/', function(req, res, next) {
-  res.send('respond with a resource');
+
+  var minSalaryInput = req.query.minSalary;
+  var maxSalaryInput = req.query.maxSalary;
+  var offset = req.query.offset;
+  var limit = req.query.limit;
+  var sortCondition = req.query.sort;
+
+  //We want to decode sortCondition
+  sortCondition = decodeURIComponent(sortCondition);
+
+  //Validation Check for the params - If any params is missing, return 400
+  var validatedParams = validateParamsInput(minSalaryInput, maxSalaryInput, offset, limit, sortCondition);
+  if(validatedParams){
+    res.statusCode = 400;
+    return res.json({error: validatedParams});
+  }
+
+  //Preprocess params sortfield & salary
+  var sortField = parseSortCondition(sortCondition);
+  var salaryField = {
+    salary: {
+      $gte: minSalaryInput, 
+      $lte: maxSalaryInput}
+  }
+
+  //Employees.find({}).sort({_id: 'asc'}).limit(limit).skip(3*(pageNum-1))
+  // Employees.find({}).sort({ sortField : operator}).limit(limit).skip(offset)
+  console.log(minSalaryInput);
+  console.log(maxSalaryInput);
+  Employees.find(salaryField)
+  .sort(sortField).limit(limit).skip(offset)
+  .then((employeeRecord) => {
+    console.log(employeeRecord)
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
+    res.json(employeeRecord);
+  })
 });
 
 router.get('/employeeRecords', function(req,res,next){
@@ -26,8 +62,19 @@ router.get('/employeeRecords', function(req,res,next){
     res.statusCode = 200;
     res.setHeader('Content-Type', 'application/json');
     res.json(employeeRecord);
-  })
-})
+  }, (err) => next(err))
+  .catch((err) => next(err))
+});
+
+router.get('/employeeRecords/count', function(req,res,next){
+  Employees.countDocuments()
+  .then((count)=>{
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
+    res.json(count);
+  }, (err) => next(err))
+  .catch((err) => next(err))
+});
 
 router.delete('/employeeRecords', function(req,res,next){
   Employees.deleteMany({})
@@ -41,6 +88,9 @@ router.delete('/employeeRecords', function(req,res,next){
 
 router.post('/upload', upload.single('emplist'), async function(req,res,next) {
   //We will being by accepting the csv file here
+  console.log("test");
+  console.log(req.files);
+  console.log(req.file.path);
   const fileRows = [];
   await csv.parseFile(req.file.path)
   .on("data", function(data){
@@ -49,7 +99,6 @@ router.post('/upload', upload.single('emplist'), async function(req,res,next) {
   .on("end", function(){
 
     fs.unlinkSync(req.file.path);
-
     const validationError = validateEmployeeDetails(fileRows)
 
     if(validationError){
@@ -75,6 +124,7 @@ router.post('/upload', upload.single('emplist'), async function(req,res,next) {
       res.statusCode = 200;
       res.setHeader('Content-Type' , 'application/json');
       res.json(docs);
+      //res.json("Successful");
     }, (err) => next(err))
     .catch((err) => {
       next(err);
@@ -83,6 +133,78 @@ router.post('/upload', upload.single('emplist'), async function(req,res,next) {
   })
   //Then save into database
 });
+
+function parseSortCondition(sortCondition){
+    //Parse sort to see if it's asc or desc
+    var operator = ""; 
+    if(sortCondition[0] == '-'){ //desc
+      operator = "desc";
+    }
+    else {
+      operator = "asc";
+    }
+  
+    var sortField = {};
+  
+    if(sortCondition.substring(1, sortCondition.length) == "id"){
+      sortField["_id"] = operator;
+    }
+    else{
+      sortField[sortCondition.substring(1, sortCondition.length)] = operator;
+    }
+
+    console.log("testing")
+    console.log(sortField)
+    return sortField;
+}
+
+function validateParamsInput(minSalary, maxSalary, offset, limit, sort){
+
+  console.log(sort)
+  if(minSalary == "" || maxSalary == ""){
+    return "Error! Salary params is empty";
+  }
+
+  if(offset == ""){
+    return "Error! Offset params is empty";
+  }
+
+  if(limit == ""){
+    return "Error! Limit Offset is empty";
+  }
+
+  if(sort == ""){
+    return "Error! Sort is empty"; 
+  }
+
+  //Validate that salary is valid 
+  if(isNaN(minSalary) || isNaN(maxSalary)){
+    return "Error! Invalid Salary Params"
+  }
+
+  //Validate that offset & limit is valid 
+  if(isNaN(offset) || isNaN(limit)){
+    return "Error! Invalid offset/limit passed"
+  }
+  
+  //Validate sort is +id/name/login/salary
+  //Validate first portion is + or - 
+  if(sort[0] != '+' && sort[0] != '-'){
+    return "Error! Invalid Sort format"
+  }
+  else{
+    //Check if it's a NaN 
+    var tempArray = ["id", "name", "login", "salary"];
+    var temp = sort.substring(1, sort.length);
+    console.log("test1")
+    console.log(temp)
+    if(!tempArray.includes(temp.toLowerCase())){
+      return "Error! Invalid Sort format"
+    }
+  }
+
+  return ;
+}
 
 function parseEmployeeRecords(fileRows){
   var EmployeesRecords = [];
