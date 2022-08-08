@@ -7,11 +7,10 @@ const Employees = require('../models/employee')
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
-  console.log("test")
   Employees.find({}).then((employees) => {
     console.log(employees)
   })
-  res.render('index', { title: 'Express' });
+  res.render('index', { title: 'ESTL Take Home Assessment' });
 });
 
 module.exports = router;

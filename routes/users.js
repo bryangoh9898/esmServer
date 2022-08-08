@@ -1,19 +1,13 @@
 var express = require('express');
 var router = express.Router();
-// const fileupload = require('express-fileupload');
 const Employees = require('../models/employee')
-
-//New stuff needed
 const http = require('http');
 const fs = require('fs');
-
 const multer = require('multer');
 const csv = require('fast-csv');
 const { Model } = require('mongoose');
-//We will use this to acccept /users/upload
 
 const upload = multer({ dest: 'tmp/csv/' });
-
 //We see that mongodb is case-sensitive
 
 router.get('/', function(req, res, next) {
@@ -42,10 +36,6 @@ router.get('/', function(req, res, next) {
       $lte: maxSalaryInput}
   }
 
-  //Employees.find({}).sort({_id: 'asc'}).limit(limit).skip(3*(pageNum-1))
-  // Employees.find({}).sort({ sortField : operator}).limit(limit).skip(offset)
-  console.log(minSalaryInput);
-  console.log(maxSalaryInput);
   Employees.find(salaryField)
   .sort(sortField).limit(limit).skip(offset)
   .then((employeeRecord) => {
@@ -53,7 +43,8 @@ router.get('/', function(req, res, next) {
     res.statusCode = 200;
     res.setHeader('Content-Type', 'application/json');
     res.json(employeeRecord);
-  })
+  }, (err) => next(err))
+  .catch((err) => next(err))
 });
 
 router.get('/employeeRecords', function(req,res,next){
@@ -88,9 +79,6 @@ router.delete('/employeeRecords', function(req,res,next){
 
 router.post('/upload', upload.single('emplist'), async function(req,res,next) {
   //We will being by accepting the csv file here
-  console.log("test");
-  console.log(req.files);
-  console.log(req.file.path);
   const fileRows = [];
   await csv.parseFile(req.file.path)
   .on("data", function(data){
@@ -118,17 +106,17 @@ router.post('/upload', upload.single('emplist'), async function(req,res,next) {
         upsert: true,
       }
     }));
+
     Employees.bulkWrite(bulkRecords)
     .then((docs) => {
       console.log("Saved into db successfully");
       res.statusCode = 200;
       res.setHeader('Content-Type' , 'application/json');
       res.json(docs);
-      //res.json("Successful");
     }, (err) => next(err))
     .catch((err) => {
       next(err);
-    } );
+    });
 
   })
   //Then save into database
@@ -303,9 +291,7 @@ function validateRow(row, ids, login){
     }
 
   }
-
   return 
-
 }
 
 
