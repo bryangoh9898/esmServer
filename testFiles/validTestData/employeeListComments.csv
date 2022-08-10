@@ -1,0 +1,11 @@
+id,login,name,salary
+e0001,hpotter,Harry Potter,1234.00
+e0002,rwesley,Ron Weasley,19234.50
+e0003,ssnape,Severus Snape,4000.00
+e0004,rhagrid,Rubeus Hagrid,3999.99
+e0005,voldemort,Lord Voldemort,523.40
+e0006,gwesley,Ginny Weasley,4000.04
+#this line is commented out
+e0007,hgranger,Hermione Granger,0.00
+e0008,adumbledore,Albus Dumbledore,34.23
+e0009,dmalfoy,Draco Malfoy,34234.50

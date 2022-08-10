@@ -214,7 +214,7 @@ router.get('/employeeRecords/count', function(req,res,next){
 });
 
 //Delete all of employee records
-router.delete('/employeeRecords', function(req,res,next){
+router.delete('/', function(req,res,next){
   Employees.deleteMany({})
   .then(() => {
       res.statusCode = 200;
@@ -260,12 +260,14 @@ router.post('/upload', upload.single('emplist'), async function(req,res,next) {
       res.statusCode = 200;
       res.setHeader('Content-Type' , 'application/json');
       res.json(docs);
+      return res
     }, (err) => next(err))
     .catch((err) => {
       next(err);
     });
 
   })
+
   //Then save into database
 });
 
@@ -379,7 +381,18 @@ function validateEmployeeDetails(rows){
   //ID and login must be unique, should not be repeated - We should caps everything and make comparison
   ids = []
   login = []
-  //We ignore the header row (first row)
+
+  //We validate that there are only 4 column headers
+  if(rows.length == 0){
+    return "Empty File Uploaded"
+  }
+
+  var error = validateHeader(rows[0]);
+
+  if(error){
+    return error
+  }
+
   for(var i = 1 ; i < rows.length; i++ ){
     const validatedRow = validateRow(rows[i], ids, login);
     if(validatedRow == "Comment"){
@@ -395,16 +408,36 @@ function validateEmployeeDetails(rows){
   return ;
 }
 
-function validateRow(row, ids, login){
-  //We should only have exactly 4 columns
-  if(row.length > 4 || row.length < 4){
-    return "There are " + row.length + " columns, csv file should only contain 4!"
+function validateHeader(row){
+
+  if(row.length == 0){
+    return "Empty File Uploaded"
   }
 
+  if(row.length > 4){
+    return "Number of headers: " + row[0].length + ". Too many column headers. There should only be 4!"
+  }
+  if(row.length < 4){
+    return "Number of headers: " + row[0].length + ". Too little column headers. There should only be 4!"
+  }
+
+  for( var i = 0 ; i < row.length; i ++){
+    if(row[i] == ''){
+      return "Column header " + (++i) + " is Empty"
+    }
+  }
+}
+
+function validateRow(row, ids, login){
   //Check if it's a comment, if comment, ignore the row and return as per usual
   tempFirstCellStr = row[0]
   if(tempFirstCellStr[0] == '#'){
     return "Comment"
+  }
+
+  //We should only have exactly 4 columns
+  if(row.length > 4 || row.length < 4){
+    return "There are " + row.length + " columns, csv file should only contain 4!"
   }
 
   //All 4 columns must be filled
