@@ -5,8 +5,14 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 
 const mongoose = require('mongoose');
+
+//For local database
 const url = 'mongodb://localhost:27017/esdb';
 const connect = mongoose.connect(url);
+
+//For cloud database
+// var url = 'mongodb+srv://estlAdmin:zGauN0sarHi4SAg2@cluster0.0uzi7hr.mongodb.net/?retryWrites=true&w=majority';
+// const connect = mongoose.connect(url);
 
 
 var indexRouter = require('./routes/index');
