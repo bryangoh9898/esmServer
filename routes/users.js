@@ -41,7 +41,7 @@ router.put('/:id', function(req,res,next){
     //Check if valid login param
     if(employee == null){
       res.statusCode = 204;
-      res.json("No employee found with such ID")  
+      res.json({error: "No employee found with such ID"})  
       return res
     }
 
@@ -52,7 +52,7 @@ router.put('/:id', function(req,res,next){
         if(validEmployee != null){
           res.statusCode = 400;
           res.setHeader('Content-Type' , 'application/json');
-          res.json("Login already exists in database");
+          res.json({error: "Login already exists in database"});
           return res
         }
 
@@ -291,9 +291,6 @@ function parseSortCondition(sortCondition){
     else{
       sortField[sortCondition.substring(1, sortCondition.length)] = operator;
     }
-
-    console.log("testing")
-    console.log(sortField)
     return sortField;
 }
 
@@ -316,7 +313,6 @@ function validateUserParamsInput(name, login, salary){
 
 function validateParamsInput(minSalary, maxSalary, offset, limit, sort){
 
-  console.log(sort)
   if(minSalary == "" || maxSalary == ""){
     return "Error! Salary params is empty";
   }
@@ -352,8 +348,6 @@ function validateParamsInput(minSalary, maxSalary, offset, limit, sort){
     //Check if it's a NaN 
     var tempArray = ["id", "name", "login", "salary"];
     var temp = sort.substring(1, sort.length);
-    console.log("test1")
-    console.log(temp)
     if(!tempArray.includes(temp.toLowerCase())){
       return "Error! Invalid Sort format"
     }
