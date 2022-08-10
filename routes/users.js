@@ -5,11 +5,103 @@ const http = require('http');
 const fs = require('fs');
 const multer = require('multer');
 const csv = require('fast-csv');
-const { Model } = require('mongoose');
 
 const upload = multer({ dest: 'tmp/csv/' });
 //We see that mongodb is case-sensitive
 
+//CRUD features
+router.get('/:id', function(req,res,next){
+  Employees.findOne({"id": req.params.id})
+  .then((employee) => {
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
+    res.json(employee);
+  }, (err) => next(err))
+  .catch((err) => next(err))
+});
+
+router.put('/:id', function(req,res,next){
+      
+  //We want to make sure json payload is valid 
+  var name = req.body.name;
+  var login = req.body.login;
+  var salary = req.body.salary; 
+
+  //Validate json payload 
+  var validated = validateUserParamsInput(name, login, salary)
+  if(validated){
+    res.statusCode = 400;
+    return res.json({error: validated});
+  }
+
+  Employees.findOne({"id": req.params.id})
+  .then((employee) => {
+    //Check if valid login param
+    if(employee == null){
+      res.statusCode = 204;
+      res.json("No employee found with such ID")  
+      return res
+    }
+
+    if(login != employee.login){
+      //Do a check to see if this login already existss
+      Employees.findOne({"login" : login})
+      .then((validEmployee) => {
+        if(validEmployee != null){
+          res.statusCode = 400;
+          res.setHeader('Content-Type' , 'application/json');
+          res.json("Login already exists in database");
+          return res
+        }
+
+        //Valid payload, now we update our employee data
+        employee.name = req.body.name;
+        employee.login = req.body.login;
+        employee.salary = req.body.salary;
+        employee.save().then((savedEmployee) => {
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.json(savedEmployee)
+        }, (err) => next(err))  
+        .catch((err) => next(err)) 
+      }, (err) => next(err))
+      .catch((err) => next(err))
+    }
+    else{
+      //Valid payload, now we update our employee data
+      employee.name = req.body.name;
+      employee.login = req.body.login;
+      employee.salary = req.body.salary;
+      employee.save().then((savedEmployee) => {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
+        res.json(savedEmployee)
+      }, (err) => next(err))  
+      .catch((err) => next(err)) 
+    }
+ 
+  }, (err) => next(err))
+  .catch((err) => next(err))
+
+})
+
+
+router.delete('/:id', function(req,res,next) {
+
+  Employees.deleteOne({"id": req.params.id})
+  .then(() => {
+    res.statusCode = 200;
+    res.setHeader('Content-Type' , 'application/json');
+    res.json("Successful");
+  }, (err) => next(err))
+  .catch((err) => next(err))
+
+})
+
+
+
+
+//Retrieves the list of 30 users with sort and filter conditions
 router.get('/', function(req, res, next) {
 
   var minSalaryInput = req.query.minSalary;
@@ -45,8 +137,55 @@ router.get('/', function(req, res, next) {
     res.json(employeeRecord);
   }, (err) => next(err))
   .catch((err) => next(err))
+
 });
 
+//Post a new user
+router.post('/', function(req, res, next){
+    //Check if the id for new user passed in is already in database
+    // Employees.findOne({"id": req.body.id})
+    Employees.findOne({$or: [
+      {"id": req.body.id},
+      {"login": req.body.login}
+    ]})
+    .then((employee) => { 
+
+      if(employee != null){
+        res.statusCode = 400;
+        res.setHeader('Content-Type' , 'application/json');
+        res.json("UserID/Login already exists in database");
+        return res
+      }
+
+        //Validate json payload 
+        var validated = validateUserParamsInput(req.body.name, req.body.login, req.body.salary)
+        if(validated){
+          res.statusCode = 400;
+          return res.json({error: validated});
+        }
+
+        Employees.create({
+          id: req.body.id,
+          login: req.body.login,
+          name: req.body.name,
+          salary: req.body.salary
+        })
+        .then((newEmployee) => {
+          res.statusCode = 200;
+          res.setHeader('Content-Type' , 'application/json');
+          res.json(newEmployee);
+        }, (err) => next(err))
+        .catch((err) => next(err))
+      //})
+
+
+    }, (err) => next(err))
+    .catch((err) => next(err))
+    
+
+})
+
+//Retrieves all the records
 router.get('/employeeRecords', function(req,res,next){
   Employees.find({})
   .then((employeeRecord) => {
@@ -57,8 +196,15 @@ router.get('/employeeRecords', function(req,res,next){
   .catch((err) => next(err))
 });
 
+//Retrieves count of all the records 
 router.get('/employeeRecords/count', function(req,res,next){
-  Employees.countDocuments()
+  var salaryField = {
+    salary: {
+      $gte: req.query.minSalary, 
+      $lte: req.query.maxSalary}
+  }
+  
+  Employees.countDocuments(salaryField)
   .then((count)=>{
     res.statusCode = 200;
     res.setHeader('Content-Type', 'application/json');
@@ -67,6 +213,7 @@ router.get('/employeeRecords/count', function(req,res,next){
   .catch((err) => next(err))
 });
 
+//Delete all of employee records
 router.delete('/employeeRecords', function(req,res,next){
   Employees.deleteMany({})
   .then(() => {
@@ -144,6 +291,23 @@ function parseSortCondition(sortCondition){
     console.log("testing")
     console.log(sortField)
     return sortField;
+}
+
+function validateUserParamsInput(name, login, salary){
+  if(name == ""){
+    return "Error! Name params is empty"
+  }
+
+  if(login == ""){
+    return "Error! Login params is empty"
+  }
+
+  if(isNaN(salary)){
+    return "Error! Invalid Salary"
+  }
+
+  return
+
 }
 
 function validateParamsInput(minSalary, maxSalary, offset, limit, sort){
