@@ -307,6 +307,10 @@ function validateUserParamsInput(name, login, salary){
     return "Error! Invalid Salary"
   }
 
+  if(salary < 0){
+    return "Error! Salary cannot be less than 0"
+  }
+
   return
 
 }
