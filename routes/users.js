@@ -1,7 +1,6 @@
 var express = require('express');
 var router = express.Router();
 const Employees = require('../models/employee')
-const http = require('http');
 const fs = require('fs');
 const multer = require('multer');
 const csv = require('fast-csv');
@@ -10,6 +9,8 @@ const upload = multer({ dest: 'tmp/csv/' });
 //We see that mongodb is case-sensitive
 
 //CRUD features
+
+//Retrieves a user given ID 
 router.get('/:id', function(req,res,next){
   Employees.findOne({"id": req.params.id})
   .then((employee) => {
@@ -20,6 +21,7 @@ router.get('/:id', function(req,res,next){
   .catch((err) => next(err))
 });
 
+//Update a user information 
 router.put('/:id', function(req,res,next){
       
   //We want to make sure json payload is valid 
@@ -85,9 +87,8 @@ router.put('/:id', function(req,res,next){
 
 })
 
-
+//Delete a user
 router.delete('/:id', function(req,res,next) {
-
   Employees.deleteOne({"id": req.params.id})
   .then(() => {
     res.statusCode = 200;
@@ -95,10 +96,7 @@ router.delete('/:id', function(req,res,next) {
     res.json("Successful");
   }, (err) => next(err))
   .catch((err) => next(err))
-
 })
-
-
 
 
 //Retrieves the list of 30 users with sort and filter conditions
@@ -128,6 +126,7 @@ router.get('/', function(req, res, next) {
       $lte: maxSalaryInput}
   }
 
+  //Retrieves and return users who satisfy search conditions
   Employees.find(salaryField)
   .sort(sortField).limit(limit).skip(offset)
   .then((employeeRecord) => {
@@ -254,6 +253,7 @@ router.post('/upload', upload.single('emplist'), async function(req,res,next) {
       }
     }));
 
+    //We do our operation and update to db here
     Employees.bulkWrite(bulkRecords)
     .then((docs) => {
       console.log("Saved into db successfully");
@@ -268,8 +268,10 @@ router.post('/upload', upload.single('emplist'), async function(req,res,next) {
 
   })
 
-  //Then save into database
 });
+
+
+//------------------Helper & Validation Functions-----------------//
 
 function parseSortCondition(sortCondition){
     //Parse sort to see if it's asc or desc
